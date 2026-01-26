@@ -1,4 +1,9 @@
 (library
  (name domainslib)
  (public_name domainslib)
- (libraries saturn domain-local-await))
+ (libraries saturn domain-local-await)
+ (modules domainslib chan fun_queue multi_channel task heartbeat)
+ (foreign_stubs
+  (language c)
+  (names heartbeat_stubs)
+  (flags :standard -pthread)))

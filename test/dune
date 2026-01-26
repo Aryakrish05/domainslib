@@ -13,6 +13,31 @@
  (modules fib_par))
 
 (test
+ (name fib_heartbeat)
+ (libraries domainslib)
+ (modules fib_heartbeat))
+
+(test
+ (name fib_bench)
+ (libraries domainslib unix)
+ (modules fib_bench))
+
+(test
+ (name test_hb_simple)
+ (libraries domainslib)
+ (modules test_hb_simple))
+
+(test
+ (name compare_fib)
+ (libraries domainslib unix)
+ (modules compare_fib))
+
+(test
+ (name final_compare)
+ (libraries domainslib unix)
+ (modules final_compare))
+
+(test
  (name kcas_integration)
  (libraries domainslib kcas)
  (modules kcas_integration))
