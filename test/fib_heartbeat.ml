@@ -9,7 +9,7 @@ let rec fib n =
   else fib (n-1) + fib (n-2)
 
 let rec fib_heartbeat pool n =
-  if n <= 25 then fib n  (* Sequential cutoff to avoid stack overflow *)
+  if n <= 20 then fib n  (* Sequential cutoff to avoid stack overflow *)
   else
     let (a, b) = H.fork2join pool 
       (fun () -> fib_heartbeat pool (n-1))

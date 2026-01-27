@@ -47,13 +47,13 @@ let fork2join : type a b. Task.pool -> (unit -> a) -> (unit -> b) -> a * b =
     if fiber_get_tokens () > 1 then (
       task := Promoted (promote pool g)
     ) else (
-      let fls_queue =
+      let fls_stack =
         try fiber_get_local_deque () with Failure _ ->
-          let q = Queue.create () in
-          fiber_set_local_deque q;
-          q
+          let s = Stack.create () in
+          fiber_set_local_deque s;
+          s
       in
-      Queue.add (TaskRef task) fls_queue
+      Stack.push (TaskRef task) fls_stack
     );
     
     let result_f = f () in
@@ -67,15 +67,15 @@ let fork2join : type a b. Task.pool -> (unit -> a) -> (unit -> b) -> a * b =
     (result_f, result_g)
 
 let rec promote_at_interrupt pool =
-  let fls_queue =
+  let fls_stack =
     try fiber_get_local_deque () with Failure _ ->
-      let q = Queue.create () in
-      fiber_set_local_deque q;
-      q
+      let s = Stack.create () in
+      fiber_set_local_deque s;
+      s
   in
-  if Queue.is_empty fls_queue then ()
+  if Stack.is_empty fls_stack then ()
   else
-    match Queue.take_opt fls_queue with
+    match Stack.pop_opt fls_stack with
     | None -> ()
     | Some (TaskRef task) ->
         (match !task with

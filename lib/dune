@@ -2,7 +2,7 @@
  (name domainslib)
  (public_name domainslib)
  (libraries saturn domain-local-await)
- (modules domainslib chan fun_queue multi_channel task heartbeat)
+ (modules domainslib chan fun_queue multi_channel task heartbeat heartbeat_stack)
  (foreign_stubs
   (language c)
   (names heartbeat_stubs)

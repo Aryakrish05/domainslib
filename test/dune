@@ -38,6 +38,11 @@
  (modules final_compare))
 
 (test
+ (name compare_queue_stack)
+ (libraries domainslib unix)
+ (modules compare_queue_stack))
+
+(test
  (name kcas_integration)
  (libraries domainslib kcas)
  (modules kcas_integration))
