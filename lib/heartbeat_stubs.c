@@ -25,29 +25,25 @@ CAMLprim value caml_fiber_set_tokens(value n)
 }
 
 
-CAMLprim value caml_fiber_get_local_deque(value unit)
+CAMLprim value caml_fiber_get_local_queue(value unit)
 {
   CAMLparam0();
-  value dq = Caml_state->current_stack->fls_local_deque;
+  value queue = Caml_state->current_stack->fls_local_queue;
   
-  if (dq == Val_unit) {
-    caml_failwith("Fiber-local deque not initialized");
+  if (queue == Val_unit) {
+    caml_failwith("Fiber-local queue not initialized");
   }
   
-  CAMLreturn(dq);
+  CAMLreturn(queue);
 }
 
 
-CAMLprim value caml_fiber_set_local_deque(value deque)
+CAMLprim value caml_fiber_set_local_queue(value queue)
 {
-  CAMLparam1(deque);
+  CAMLparam1(queue);
   struct stack_info* stack = Caml_state->current_stack;
-  
-  if (stack->fls_local_deque == Val_unit) {
-    caml_register_generational_global_root(&stack->fls_local_deque);
-  }
-  
-  stack->fls_local_deque = deque;
+    
+  stack->fls_local_queue = queue;
   
   CAMLreturn(Val_unit);
 }

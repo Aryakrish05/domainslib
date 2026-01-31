@@ -25,7 +25,6 @@ val teardown : unit -> unit
 
 (** {1 Fork-Join Parallelism} *)
 
-val fork2join : Task.pool -> (unit -> 'a) -> (unit -> 'b) -> 'a * 'b
 (** [fork2join pool f g] executes [f] and [g] in a fork-join pattern with
     token-based work stealing.
     
@@ -39,3 +38,4 @@ val fork2join : Task.pool -> (unit -> 'a) -> (unit -> 'b) -> 'a * 'b
     
     @return Tuple [(result_f, result_g)]
     @raise Failure if fiber-local storage is not properly initialized *)
+val fork2join : Task.pool -> (unit -> 'a) -> (unit -> 'b) -> 'a * 'b

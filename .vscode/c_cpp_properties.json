@@ -4,13 +4,15 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/home/arya/.opam/heartbeat/.opam-switch/sources/ocaml-variants/runtime"
+                "/home/arya/.opam/heartbeat/lib/ocaml"
             ],
-            "defines": [],
+            "defines": [
+                "CAML_INTERNALS"
+            ],
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "c11",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "linux-gcc-x64"
+            "intelliSenseMode": "linux-gcc-x64",
+            "cppStandard": "gnu++17"
         }
     ],
     "version": 4

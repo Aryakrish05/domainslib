@@ -8,7 +8,7 @@ let rec fib n =
   else fib (n-1) + fib (n-2)
 
 let rec fib_par pool n =
-  if n <= 40 then fib n
+  if n <= 2 then fib n
   else
     let a = T.async pool (fun _ -> fib_par pool (n-1)) in
     let b = T.async pool (fun _ -> fib_par pool (n-2)) in

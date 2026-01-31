@@ -11,7 +11,7 @@ let rec fib n =
 
 (* Heartbeat version *)
 let rec fib_heartbeat pool n =
-  if n <= 20 then fib n
+  if n <= 2 then fib n
   else
     let (a, b) = H.fork2join pool 
       (fun () -> fib_heartbeat pool (n-1))
@@ -20,7 +20,7 @@ let rec fib_heartbeat pool n =
 
 (* Plain Task.async version *)
 let rec fib_async pool n =
-  if n <= 20 then fib n
+  if n <= 2 then fib n
   else
     let a_promise = T.async pool (fun () -> fib_async pool (n-1)) in
     let b = fib_async pool (n-2) in

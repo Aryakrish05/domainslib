@@ -1,8 +1,8 @@
 (* Fiber Local Storage *)
 external fiber_get_tokens : unit -> int = "caml_fiber_get_tokens"
 external fiber_set_tokens : int -> unit = "caml_fiber_set_tokens"
-external fiber_get_local_deque : unit -> 'a = "caml_fiber_get_local_deque"
-external fiber_set_local_deque : 'a -> unit = "caml_fiber_set_local_deque"
+external fiber_get_local_queue : unit -> 'a = "caml_fiber_get_local_queue"
+external fiber_set_local_queue : 'a -> unit = "caml_fiber_set_local_queue"
 
 (* Heartbeat *)
 external setup_heartbeat : int -> ('a -> unit) -> 'b -> unit = "parallel_setup_heartbeat"
@@ -21,36 +21,42 @@ type _ task_status =
 (** Existential wrapper to hide the type parameter. *)
 type task_ref = TaskRef : 'a task_status ref -> task_ref
 
+(*currently - if cur_tokens <=0 , then we are not gonna parallelise
+  might be slightly bad*)
 let promote pool g =
   let cur_tokens = fiber_get_tokens () in
-  assert (cur_tokens > 0);
-  fiber_set_tokens ((cur_tokens - 1) / 2);
-  let closure = fun _ ->
-    fiber_set_tokens (cur_tokens / 2);
-    let result = g () in
-    let child_tokens = fiber_get_tokens () in
-    (result, child_tokens)
-  in
-  Task.async pool closure
+  if(cur_tokens <= 0) then (Pending g)
+  else
+    (fiber_set_tokens ((cur_tokens - 1) / 2);
+    let closure = fun _ ->
+      (fiber_set_tokens (cur_tokens / 2);
+      let result = g () in
+      let child_tokens = fiber_get_tokens () in
+      (result, child_tokens))
+    in
+    Promoted (Task.async pool closure))
 
 let join : type a. Task.pool -> (a * int) Task.promise -> a =
   fun pool promise ->
+    (*print_endline("Awaiting for my promise");*)
     let (result, child_tokens) = Task.await pool promise in
     let cur_tokens = fiber_get_tokens () in
     fiber_set_tokens (cur_tokens + child_tokens);
+    (*print_endline("Received my promise");*)
     result
 
 let fork2join : type a b. Task.pool -> (unit -> a) -> (unit -> b) -> a * b =
   fun pool f g ->
     let task = ref (Pending g) in
     
-    if fiber_get_tokens () > 1 then (
-      task := Promoted (promote pool g)
-    ) else (
+    if fiber_get_tokens () > 0 then (
+      task := promote pool g
+    )
+    else (
       let fls_queue =
-        try fiber_get_local_deque () with Failure _ ->
+        try fiber_get_local_queue () with Failure _ ->
           let q = Queue.create () in
-          fiber_set_local_deque q;
+          fiber_set_local_queue q;
           q
       in
       Queue.add (TaskRef task) fls_queue
@@ -60,7 +66,10 @@ let fork2join : type a b. Task.pool -> (unit -> a) -> (unit -> b) -> a * b =
     
     let result_g =
       match !task with
-      | Promoted p -> join pool p
+      | Promoted p -> 
+        print_endline("Joining my promoted task");
+        let res=join pool p in
+        print_endline("Joined my promoted task");res
       | Pending g -> task := Claimed; g ()
       | Claimed -> failwith "Internal Error: Task already claimed"
     in
@@ -68,24 +77,28 @@ let fork2join : type a b. Task.pool -> (unit -> a) -> (unit -> b) -> a * b =
 
 let rec promote_at_interrupt pool =
   let fls_queue =
-    try fiber_get_local_deque () with Failure _ ->
+    try fiber_get_local_queue () with Failure _ ->
       let q = Queue.create () in
-      fiber_set_local_deque q;
+      fiber_set_local_queue q;
       q
   in
-  if Queue.is_empty fls_queue then ()
-  else
-    match Queue.take_opt fls_queue with
-    | None -> ()
-    | Some (TaskRef task) ->
+  if(fiber_get_tokens () > 0) then 
+    (match Queue.take_opt fls_queue with
+      | None -> ()
+      | Some (TaskRef task) ->
         (match !task with
-        | Claimed -> promote_at_interrupt pool
-        | Pending g ->
-            let p = promote pool g in
-            task := Promoted p;
-            if fiber_get_tokens () > 1 then
-              promote_at_interrupt pool
-        | Promoted _ -> promote_at_interrupt pool)
+          | Claimed -> promote_at_interrupt pool
+          | Pending g ->
+            (match promote pool g with
+              | Promoted _ as p -> 
+                task := p; 
+                promote_at_interrupt pool
+              | Pending _ ->
+                (* Not enough tokens, put it back in the queue *)
+                Queue.add (TaskRef task) fls_queue
+              | Claimed -> failwith "Internal Error: Task couldn't have been claimed here")
+          | Promoted _ -> promote_at_interrupt pool))
+  else () 
 
 let callback pool =
   fiber_set_tokens (fiber_get_tokens () + heartbeat_promotions);

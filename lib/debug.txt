@@ -1,0 +1,31 @@
+To debug efficiently,
+
+Way 1:
+
+gdb _build/default/test/test_hb_simple.exe
+# then in gdb:
+run 4 25
+info threads
+thread <id-that-crashed>
+bt full
+frame 0
+info locals
+info args
+disassemble
+info registers
+thread apply all bt
+
+Rebuild with debug symbols for better visibility:
+dune clean
+dune build --profile=dev
+
+Way 2:
+gdb -batch -ex "set pagination off" -ex "run 4 25" 
+-ex "thread 3" -ex "bt" -ex "frame 0" -ex "info locals" -ex "frame 1" -ex "info locals" --args 
+_build/default/test/test_hb_simple.exe 4 25 2>&1 | tail -80
+
+
+
+look at
+/home/arya/snap/code/220/.local/share/rr/test_hb_simple.exe-1249
+/home/arya/snap/code/220/.local/share/rr/heisenbug
