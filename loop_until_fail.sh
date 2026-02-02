@@ -10,7 +10,7 @@ while [ $CRASHED -eq 0 ]; do
     ITER=$((ITER + 1))
     
     # Run with rr record and timeout (10s)taskset -c 0-3 rr record
-    RR_OUTPUT=$(timeout 20s  taskset -c 0-3 rr record ./_build/default/test/test_hb_simple.exe 4 24 2>&1)
+    RR_OUTPUT=$(timeout 400s ./_build/default/test/test_hb_simple.exe 4 24 2>&1)
     EXIT_CODE=$?
     
     # Get the latest trace directory

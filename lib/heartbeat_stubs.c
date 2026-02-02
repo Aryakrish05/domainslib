@@ -186,3 +186,30 @@ CAMLprim value parallel_release_heartbeat(__attribute__((unused)) value unit) {
   parallel_heartbeat_decref();
   return Val_unit;
 }
+
+CAMLprim value print_async_promise_unsafe(value n)
+{
+  CAMLparam1(n);
+  printf("Asynced Promise address: %p\n", (void*)n);
+  CAMLreturn(Val_unit);
+}
+CAMLprim value print_await_promise_unsafe(value n)
+{
+  CAMLparam1(n);
+  printf("Awaited Promise address: %p\n", (void*)n);
+  CAMLreturn(Val_unit);
+}
+CAMLprim value print_promoting_closure_unsafe(value n)
+{
+  CAMLparam1(n);
+  printf("Promoting Closure address: %p\n", (void*)n);
+  fflush(stdout);
+  CAMLreturn(Val_unit);
+}
+CAMLprim value print_asyncing_closure_unsafe(value n)
+{
+  CAMLparam1(n);
+  printf("Asyncing Closure address: %p\n", (void*)n);
+  fflush(stdout);
+  CAMLreturn(Val_unit);
+}
