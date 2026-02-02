@@ -1,0 +1,100 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 22K of event 'cpu_atom/cycles/P'
+# Event count (approx.): 15486660865
+#
+# Overhead  Command          Shared Object       Symbol                                             
+# ........  ...............  ..................  ...................................................
+#
+    18.40%  test_hb_simple.  test_hb_simple.exe  [.] try_update_object_header
+    11.74%  test_hb_simple.  test_hb_simple.exe  [.] pool_sweep
+    10.83%  test_hb_simple.  test_hb_simple.exe  [.] oldify_one
+     7.84%  test_hb_simple.  test_hb_simple.exe  [.] caml_shared_try_alloc
+     7.35%  test_hb_simple.  test_hb_simple.exe  [.] Domainslib.Heartbeat.fork2join_413
+     7.27%  test_hb_simple.  test_hb_simple.exe  [.] do_some_marking
+     5.71%  test_hb_simple.  test_hb_simple.exe  [.] caml_modify
+     4.38%  test_hb_simple.  test_hb_simple.exe  [.] Dune.exe.Test_hb_simple.fib_heartbeat_418
+     2.88%  test_hb_simple.  test_hb_simple.exe  [.] Stdlib.Queue.add_290
+     2.78%  test_hb_simple.  test_hb_simple.exe  [.] caml_c_call
+     2.24%  test_hb_simple.  test_hb_simple.exe  [.] Dune.exe.Test_hb_simple.fib_416
+     2.02%  test_hb_simple.  test_hb_simple.exe  [.] oldify_mopup
+     1.84%  test_hb_simple.  test_hb_simple.exe  [.] Domainslib.Heartbeat.get_337
+     1.66%  test_hb_simple.  test_hb_simple.exe  [.] caml_fiber_get_local_queue
+     1.17%  test_hb_simple.  test_hb_simple.exe  [.] caml_fiber_get_tokens
+     1.15%  test_hb_simple.  test_hb_simple.exe  [.] Stdlib.Queue.take_opt_312
+     0.97%  test_hb_simple.  test_hb_simple.exe  [.] Domainslib.Heartbeat.loop_432
+     0.89%  test_hb_simple.  test_hb_simple.exe  [.] caml_apply3
+     0.83%  test_hb_simple.  test_hb_simple.exe  [.] caml_stw_empty_minor_heap_no_major_slice.isra.0
+     0.59%  test_hb_simple.  test_hb_simple.exe  [.] caml_darken
+     0.44%  test_hb_simple.  test_hb_simple.exe  [.] Dune.exe.Test_hb_simple.fun_524
+     0.40%  test_hb_simple.  test_hb_simple.exe  [.] Dune.exe.Test_hb_simple.fun_533
+     0.33%  test_hb_simple.  test_hb_simple.exe  [.] stw_api_barrier
+     0.33%  test_hb_simple.  test_hb_simple.exe  [.] mark_stack_push_block
+     0.27%  test_hb_simple.  test_hb_simple.exe  [.] caml_global_barrier_and_check_final
+     0.26%  test_hb_simple.  test_hb_simple.exe  [.] caml_enter_global_barrier
+     0.21%  test_hb_simple.  test_hb_simple.exe  [.] caml_atomic_fetch_add_field
+     0.13%  test_hb_simple.  test_hb_simple.exe  [.] caml_scan_stack
+     0.11%  test_hb_simple.  libc.so.6           [.] pthread_mutex_lock@@GLIBC_2.2.5
+     0.10%  test_hb_simple.  test_hb_simple.exe  [.] Domainslib.Multi_channel.recv_poll_loop_658
+     0.09%  test_hb_simple.  test_hb_simple.exe  [.] Saturn.Ws_deque.steal_as_585
+     0.09%  test_hb_simple.  test_hb_simple.exe  [.] caml_gc_log
+     0.08%  test_hb_simple.  test_hb_simple.exe  [.] caml_try_realloc_stack
+     0.08%  test_hb_simple.  test_hb_simple.exe  [.] caml_alloc_stack
+     0.08%  test_hb_simple.  test_hb_simple.exe  [.] caml_find_frame_descr
+     0.07%  test_hb_simple.  test_hb_simple.exe  [.] Domainslib.Multi_channel.recv_poll_repeated_675
+     0.07%  test_hb_simple.  test_hb_simple.exe  [.] mark
+     0.07%  test_hb_simple.  test_hb_simple.exe  [.] Stdlib.Domain.get_615
+     0.06%  test_hb_simple.  [unknown]           [k] 0xffffffffaee001bd
+     0.06%  test_hb_simple.  test_hb_simple.exe  [.] Domainslib.Task.worker_638
+     0.06%  test_hb_simple.  test_hb_simple.exe  [.] caml_atomic_cas_field
+     0.05%  test_hb_simple.  test_hb_simple.exe  [.] alloc_size_class_stack_noexc
+     0.05%  test_hb_simple.  test_hb_simple.exe  [.] Domainslib.Heartbeat.join_405
+     0.05%  test_hb_simple.  test_hb_simple.exe  [.] caml_addrmap_insert_pos
+     0.05%  test_hb_simple.  test_hb_simple.exe  [.] major_collection_slice
+     0.05%  test_hb_simple.  test_hb_simple.exe  [.] Saturn.Ws_deque.push_535
+     0.05%  test_hb_simple.  test_hb_simple.exe  [.] Domainslib.Task.do_task_494
+     0.05%  test_hb_simple.  test_hb_simple.exe  [.] Domainslib.Multi_channel.send_653
+     0.05%  test_hb_simple.  libc.so.6           [.] __memmove_avx_unaligned_erms
+     0.04%  test_hb_simple.  test_hb_simple.exe  [.] caml_try_run_on_all_domains_with_spin_work
+     0.04%  test_hb_simple.  test_hb_simple.exe  [.] caml_external_interrupt_all_signal_safe
+     0.04%  test_hb_simple.  test_hb_simple.exe  [.] Domainslib.Multi_channel.recv_679
+     0.04%  test_hb_simple.  test_hb_simple.exe  [.] update_major_slice_work
+     0.04%  test_hb_simple.  test_hb_simple.exe  [.] realloc_mark_stack
+     0.04%  test_hb_simple.  test_hb_simple.exe  [.] caml_scan_global_roots
+     0.04%  test_hb_simple.  [unknown]           [k] 0xffffffffb02cb49e
+     0.04%  test_hb_simple.  libc.so.6           [.] __strlen_avx2
+     0.04%  test_hb_simple.  libc.so.6           [.] pthread_mutex_unlock@@GLIBC_2.2.5
+     0.03%  test_hb_simple.  test_hb_simple.exe  [.] commit_major_slice_work
+     0.03%  test_hb_simple.  test_hb_simple.exe  [.] Saturn.Ws_deque.pop_as_552
+     0.03%  test_hb_simple.  libc.so.6           [.] syscall
+     0.03%  test_hb_simple.  test_hb_simple.exe  [.] handle_incoming
+     0.03%  test_hb_simple.  test_hb_simple.exe  [.] Stdlib.Random.int_aux_847
+     0.03%  test_hb_simple.  [unknown]           [k] 0xffffffffaf1edef6
+     0.03%  test_hb_simple.  [unknown]           [k] 0xffffffffaf2281f3
+     0.03%  test_hb_simple.  test_hb_simple.exe  [.] caml_atomic_exchange_field
+     0.03%  test_hb_simple.  test_hb_simple.exe  [.] Domainslib.Task.async_611
+     0.03%  test_hb_simple.  test_hb_simple.exe  [.] Domainslib.Heartbeat.closure_399
+     0.03%  test_hb_simple.  [unknown]           [k] 0xffffffffaf1496c4
+     0.03%  test_hb_simple.  test_hb_simple.exe  [.] Domainslib.Heartbeat.create_334
+     0.03%  test_hb_simple.  test_hb_simple.exe  [.] Domainslib.Task.await_576
+     0.03%  test_hb_simple.  test_hb_simple.exe  [.] Domainslib.Task.loop_652
+     0.02%  test_hb_simple.  test_hb_simple.exe  [.] caml_raise_exn
+     0.02%  test_hb_simple.  test_hb_simple.exe  [.] parallel_domain_external_interrupt_hook
+     0.02%  test_hb_simple.  test_hb_simple.exe  [.] caml_exception_with_string
+     0.02%  test_hb_simple.  test_hb_simple.exe  [.] Stdlib.Domain.maybe_grow_510
+     0.02%  test_hb_simple.  [unknown]           [k] 0xffffffffaf089ee3
+     0.02%  test_hb_simple.  test_hb_simple.exe  [.] caml_continuation_use_noexc
+     0.02%  test_hb_simple.  [unknown]           [k] 0xffffffffb02d8974
+     0.02%  test_hb_simple.  test_hb_simple.exe  [.] caml_tuplify2
+     0.02%  test_hb_simple.  [unknown]           [k] 0xffffffffb02f3153
+     0.02%  test_hb_simple.  test_hb_simple.exe  [.] decrement_stw_domains_still_processing
+     0.02%  test_hb_simple.  [unknown]           [k] 0xffffffffaee00080
+     0.02%  test_hb_simple.  test_hb_simple.exe  [.] adopt_orphaned_work
+     0.02%  test_hb_simple.  [unknown]           [k] 0xffffffffaf1edc78
+     0.02%  test_hb_simple.  [unknown]           [k] 0xffffffffb02d75e7
+     0.02%  test_hb_simple.  test_hb_simple.exe  [.] caml_fiber_set_tokens
+     0.02%  test_hb_simple.  test_hb_simple.exe  [.] caml_reset_young_limit
+     0.02%  test_hb_simple.  test_hb_simple.exe  [.] caml_resume

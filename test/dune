@@ -13,11 +13,6 @@
  (modules fib_par))
 
 (test
- (name fib_heartbeat)
- (libraries domainslib)
- (modules fib_heartbeat))
-
-(test
  (name fib_bench)
  (libraries domainslib unix)
  (modules fib_bench))

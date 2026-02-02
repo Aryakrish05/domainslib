@@ -22,13 +22,13 @@ module Heartbeat_Queue=struct
       fiber_set_local_queue q;
       q
 
-  let disable_interrupts ()= let q=get() in q.heartbeat_mask <- false
+  let disable_interrupts q = q.heartbeat_mask <- false
 
-  let enable_interrupts ()= let q=get() in q.heartbeat_mask <- true
+  let enable_interrupts q = q.heartbeat_mask <- true
 
-  let add x = Queue.add x (get ()).queue
+  let add x q = Queue.add x q.queue
 
-  let take_opt ()= Queue.take_opt (get ()).queue
+  let take_opt q = Queue.take_opt q.queue
 
   let interrupts_enabled ()= (get ()).heartbeat_mask
 end
@@ -65,40 +65,43 @@ let fork2join : type a b. Task.pool -> (unit -> a) -> (unit -> b) -> a * b =
   fun pool f g ->
     let task = ref (Pending g) in
     
-    Heartbeat_Queue.disable_interrupts ();
+    let fls_queue=Heartbeat_Queue.get () in
+
+    Heartbeat_Queue.disable_interrupts fls_queue;
     
     if (fiber_get_tokens () > 0) then (
       let g_promise = promote pool g in
       task := Promoted g_promise
     )
     else (
-      Heartbeat_Queue.add (TaskRef task)
+      Heartbeat_Queue.add (TaskRef task) fls_queue
     );
     
-    Heartbeat_Queue.enable_interrupts ();
+    Heartbeat_Queue.enable_interrupts fls_queue;
 
     let result_f = f () in
 
-    Heartbeat_Queue.disable_interrupts ();
+    Heartbeat_Queue.disable_interrupts fls_queue;
     let result_g =
       match !task with
         | Promoted p -> 
           let res=join pool p in
-          Heartbeat_Queue.enable_interrupts ();
+          Heartbeat_Queue.enable_interrupts fls_queue;
           res
         | Pending g -> 
           task := Claimed;
-          Heartbeat_Queue.enable_interrupts (); 
+          Heartbeat_Queue.enable_interrupts fls_queue; 
           g ()
-        | Claimed -> Heartbeat_Queue.enable_interrupts(); failwith "Internal Error: Task already claimed"
+        | Claimed -> Heartbeat_Queue.enable_interrupts fls_queue; failwith "Internal Error: Task already claimed"
     in
     (result_f, result_g)
 
 let promote_at_interrupt pool =
-  Heartbeat_Queue.disable_interrupts ();
+  let fls_queue=Heartbeat_Queue.get () in
+  Heartbeat_Queue.disable_interrupts fls_queue;
   let rec loop () =
     if(fiber_get_tokens () > 0) then 
-      (match Heartbeat_Queue.take_opt () with
+      (match Heartbeat_Queue.take_opt fls_queue with
         | None -> ()
         | Some (TaskRef task) ->
           (match !task with
@@ -109,7 +112,7 @@ let promote_at_interrupt pool =
             | Promoted _ -> loop ()))
     else () in 
   loop ();
-  Heartbeat_Queue.enable_interrupts ()
+  Heartbeat_Queue.enable_interrupts fls_queue
 
 (*If heartbeats are disabled - I just increment the fiber count and pass*)
 let callback pool =
