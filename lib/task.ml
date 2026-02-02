@@ -28,9 +28,9 @@ type 'a promise = 'a promise_state Atomic.t
 
 type _ t += Wait : 'a promise * task_chan -> 'a t
 
-external async_print: 'a promise -> unit = "print_async_promise_unsafe"
+(*external async_print: 'a promise -> unit = "print_async_promise_unsafe"
 external await_print: 'a promise -> unit = "print_await_promise_unsafe"
-(*external print_async_closure : (unit -> 'a) -> unit = "print_asyncing_closure_unsafe"*)
+external print_async_closure : (unit -> 'a) -> unit = "print_asyncing_closure_unsafe"*)
 let get_pool_data p =
   match Atomic.get p with
   | None -> invalid_arg "pool already torn down"
@@ -54,14 +54,13 @@ let do_task (type a) (f : unit -> a) (p : a promise) : unit =
   |  _ -> failwith "Task.do_task: impossible, can only set result of task once"
 
 let await pool promise =
-  async_print promise;
   let pd = get_pool_data pool in
   match Atomic.get promise with
-  | Returned v -> await_print promise; v
-  | Raised (e, bt) -> print_endline("Thrown!!!");flush stdout;Printexc.raise_with_backtrace e bt
+  | Returned v -> v
+  | Raised (e, bt) -> Printexc.raise_with_backtrace e bt
   | Pending _ -> 
     let await_res=perform (Wait (promise, pd.task_chan)) in
-    await_print promise;await_res
+    await_res
 
 let step (type a) (f : a -> unit) (v : a) : unit =
   try_with f v
