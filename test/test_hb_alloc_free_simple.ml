@@ -1,0 +1,31 @@
+let num_domains = try int_of_string Sys.argv.(1) with _ -> 4
+let n = try int_of_string Sys.argv.(2) with _ -> 40
+
+module T = Domainslib.Task
+module H = Domainslib.Heartbeat_alloc_free
+
+let rec fib n =
+  if n < 2 then 1
+  else fib (n-1) + fib (n-2)
+
+let rec fib_heartbeat pool n =
+  if n <= 2 then fib n
+  else
+    let (a, b) = H.fork2join pool 
+      (fun () -> fib_heartbeat pool (n-1))
+      (fun () -> fib_heartbeat pool (n-2)) in
+    a + b
+
+let main =
+  let pool = T.setup_pool ~num_domains:(num_domains - 1) () in
+  H.setup pool;
+  Printf.printf "Starting heartbeat test with n=%d\n%!" n;
+  let result = T.run pool (fun _ -> 
+    let res=fib_heartbeat pool n in
+    H.teardown ();
+    res
+  ) in
+  Printf.printf "Result: %d\n%!" result;
+  T.teardown_pool pool
+
+let () = main

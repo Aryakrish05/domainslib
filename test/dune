@@ -23,6 +23,11 @@
  (modules test_hb_simple))
 
 (test
+ (name test_hb_alloc_free_simple)
+ (libraries domainslib)
+ (modules test_hb_alloc_free_simple))
+
+(test
  (name compare_fib)
  (libraries domainslib unix)
  (modules compare_fib))
