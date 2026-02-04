@@ -35,10 +35,10 @@ end
 let heartbeat_promotions = 15
 let heartbeat_interval_us = 250
 
-type _ task_status =
-  | Promoted : ('a * int) Task.promise -> 'a task_status
-  | Claimed : 'a task_status
-  | Pending : (unit -> 'a) -> 'a task_status
+type 'a task_status =
+  | Promoted of ('a * int) Task.promise
+  | Claimed
+  | Pending of (unit -> 'a)
 
 type task_ref = TaskRef : 'a task_status ref -> task_ref
 
@@ -46,8 +46,10 @@ let promote pool g =
   let cur_tokens = fiber_get_tokens () in
     fiber_set_tokens ((cur_tokens - 1) / 2);
     let closure = fun _ ->
+      (*does every such thing create a new fiber?*)
       (fiber_set_tokens (cur_tokens / 2);
       let result = g () in
+      (*do we need to return children tokens*)
       let child_tokens = fiber_get_tokens () in
       (result, child_tokens))
     in
@@ -63,38 +65,41 @@ let join : type a. Task.pool -> (a * int) Task.promise -> a =
 
 let fork2join : type a b. Task.pool -> (unit -> a) -> (unit -> b) -> a * b =
   fun pool f g ->
-    let task = ref (Pending g) in
-    
-    let fls_queue=Heartbeat_Queue.get () in
-
-    Heartbeat_Queue.disable_interrupts fls_queue;
-    
     if (fiber_get_tokens () > 0) then (
+      let fls_queue=Heartbeat_Queue.get () in
+      (*Do I need to disable interrupts when promoting a task? -> YES! *)
+      Heartbeat_Queue.disable_interrupts fls_queue;
       let g_promise = promote pool g in
-      task := Promoted g_promise
+      Heartbeat_Queue.enable_interrupts fls_queue;
+      let result_f = f () in 
+      (*no need to disable interrupts while joining*)
+      let result_g =join pool g_promise in
+      (result_f, result_g)
     )
     else (
-      Heartbeat_Queue.add (TaskRef task) fls_queue
-    );
-    
-    Heartbeat_Queue.enable_interrupts fls_queue;
+      let task = ref (Pending g) in
+      let fls_queue=Heartbeat_Queue.get () in
+      Heartbeat_Queue.disable_interrupts fls_queue;
+      Heartbeat_Queue.add (TaskRef task) fls_queue;
+      Heartbeat_Queue.enable_interrupts fls_queue;
 
-    let result_f = f () in
+      let result_f = f () in
 
-    Heartbeat_Queue.disable_interrupts fls_queue;
-    let result_g =
-      match !task with
-        | Promoted p -> 
-          let res=join pool p in
-          Heartbeat_Queue.enable_interrupts fls_queue;
-          res
-        | Pending g -> 
-          task := Claimed;
-          Heartbeat_Queue.enable_interrupts fls_queue; 
-          g ()
-        | Claimed -> Heartbeat_Queue.enable_interrupts fls_queue; failwith "Internal Error: Task already claimed"
-    in
-    (result_f, result_g)
+      Heartbeat_Queue.disable_interrupts fls_queue;
+      let result_g =
+        match !task with
+          | Promoted p -> 
+            let res=join pool p in
+            Heartbeat_Queue.enable_interrupts fls_queue;
+            res
+          | Pending g -> 
+            task := Claimed;
+            Heartbeat_Queue.enable_interrupts fls_queue; 
+            g ()
+          | Claimed -> Heartbeat_Queue.enable_interrupts fls_queue; failwith "Internal Error: Task already claimed"
+      in
+      (result_f, result_g)
+    )
 
 let promote_at_interrupt pool =
   let fls_queue=Heartbeat_Queue.get () in

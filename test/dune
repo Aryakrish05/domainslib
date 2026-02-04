@@ -28,6 +28,35 @@
  (modules test_hb_alloc_free_simple))
 
 (test
+ (name pmap)
+ (libraries domainslib)
+ (modules pmap))
+
+(test
+ (name pmap_hb)
+ (libraries domainslib)
+ (modules pmap_hb))
+
+(test
+ (name pmap_hb_vec)
+ (libraries domainslib)
+ (modules pmap_hb_vec))
+
+(test
+ (name msort)
+ (modules msort))
+
+(test
+ (name msort_hb)
+ (libraries domainslib)
+ (modules msort_hb))
+
+(test
+ (name msort_hb_vec)
+ (libraries domainslib)
+ (modules msort_hb_vec))
+
+(test
  (name compare_fib)
  (libraries domainslib unix)
  (modules compare_fib))

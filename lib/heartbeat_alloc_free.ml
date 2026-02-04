@@ -39,8 +39,10 @@ let promote pool g =
   let cur_tokens = fiber_get_tokens () in
     fiber_set_tokens ((cur_tokens - 1) / 2);
     let closure = fun _ ->
+      (*does every such thing create a new fiber?*)
       (fiber_set_tokens (cur_tokens / 2);
       let result = g () in
+      (*do we need to return children tokens*)
       let child_tokens = fiber_get_tokens () in
       (result, child_tokens))
     in
@@ -56,42 +58,46 @@ let join : type a. Task.pool -> (a * int) Task.promise -> a =
 
 let fork2join : type a b. Task.pool -> (unit -> a) -> (unit -> b) -> a * b =
   fun pool f g ->
-    let task_queue = Task_Queue.get () in
-    let task_array = task_queue.task_array in
-    
-    Task_Queue.disable_interrupts task_queue;
-
-    let task_id = TaskArray.add g task_array in
-  
     if (fiber_get_tokens () > 0) then (
+      let task_queue = Task_Queue.get () in
+      Task_Queue.disable_interrupts task_queue;
       let g_promise = promote pool g in
-      TaskArray.unsafe_set_promoted task_id g_promise task_array
-    );
-    
-    Task_Queue.enable_interrupts task_queue;
+      Task_Queue.enable_interrupts task_queue;
+      let result_f = f () in
+      (*no need to disable interrupts while joining*)
+      let result_g = join pool g_promise in
+      (result_f, result_g)
+    )
+    else (
+      let task_queue = Task_Queue.get () in
+      let task_array = task_queue.task_array in
+      Task_Queue.disable_interrupts task_queue;
+      let task_id = TaskArray.add g task_array in
+      Task_Queue.enable_interrupts task_queue;
 
-    let result_f = f () in
+      let result_f = f () in
 
-    Task_Queue.disable_interrupts task_queue;
-    let result_g =
-      if TaskArray.is_promoted task_id task_array then (
-        let p = TaskArray.unsafe_get_promise task_id task_array in
-        let res = join pool p in
-        Task_Queue.enable_interrupts task_queue;
-        res
-      )
-      else if TaskArray.is_pending task_id task_array then (
-        let g : unit -> b = TaskArray.unsafe_get_closure task_id task_array in
-        TaskArray.unsafe_set_claimed task_id task_array;
-        Task_Queue.enable_interrupts task_queue;
-        g ()
-      )
-      else (
-        Task_Queue.enable_interrupts task_queue;
-        failwith "Internal Error: Task already claimed"
-      )
-    in
-    (result_f, result_g)
+      Task_Queue.disable_interrupts task_queue;
+      let result_g =
+        if (TaskArray.is_promoted task_id task_array) then (
+          let p = TaskArray.unsafe_get_promise task_id task_array in
+          let res = join pool p in
+          Task_Queue.enable_interrupts task_queue;
+          res
+        )
+        else if (TaskArray.is_pending task_id task_array) then (
+          let g : unit -> b = TaskArray.unsafe_get_closure task_id task_array in
+          TaskArray.pop_back task_array;
+          Task_Queue.enable_interrupts task_queue;
+          g ()
+        )
+        else (
+          Task_Queue.enable_interrupts task_queue;
+          failwith "Internal Error: Task already claimed"
+        )
+      in
+      (result_f, result_g)
+    )
 
 let promote_at_interrupt pool =
   let task_queue = Task_Queue.get () in
@@ -102,7 +108,7 @@ let promote_at_interrupt pool =
       (match TaskArray.take_opt task_array with
       | None -> ()
       | Some task_id ->
-          if TaskArray.is_pending task_id task_array then(
+          if (TaskArray.is_pending task_id task_array) then(
             let g = TaskArray.unsafe_get_closure task_id task_array in
             let g_promise = promote pool g in
             TaskArray.unsafe_set_promoted task_id g_promise task_array;
