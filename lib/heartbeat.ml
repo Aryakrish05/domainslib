@@ -1,40 +1,24 @@
-external fiber_get_tokens : unit -> int = "caml_fiber_get_tokens"
-external fiber_set_tokens : int -> unit = "caml_fiber_set_tokens"
-external fiber_get_local_queue : unit -> 'a = "caml_fiber_get_local_queue"
-external fiber_set_local_queue : 'a -> unit = "caml_fiber_set_local_queue"
+(* Heartbeat scheduling with queue-based work-stealing *)
 
-(*external print_closure_unsafe  : (unit -> 'a) -> unit = "print_promoting_closure_unsafe"
-external print_promise : 'a -> unit = "print_await_promise_unsafe"*)
+(* Create a dynamic variable *)
+external create_dynamic : 'a -> 'a = "domainslib_create_dynamic"
 
-external setup_heartbeat : int -> ('a -> unit) -> 'b -> unit = "parallel_setup_heartbeat"
-external acquire_heartbeat : unit -> unit = "parallel_acquire_heartbeat"
-external release_heartbeat : unit -> unit = "parallel_release_heartbeat"
+(* Set fiber-local state directly on current fiber *)
+external set_fiber_state : 'a -> 'b -> unit = "domainslib_set_fiber_state"
 
-module Heartbeat_Queue=struct
-  type 'a t= {mutable queue: 'a Queue.t; mutable heartbeat_mask: bool}
+(* Get fiber-local state *)
+external get_fiber_state : 'a -> 'b = "domainslib_get_fiber_state"
 
-  let create () = {queue=Queue.create(); heartbeat_mask=true}
-  (*have heartbeats enabled by default*)
+external heartbeat_setup : int -> 'a -> ('b -> 'a -> unit) -> 'b -> unit = "domainslib_heartbeat_setup"
+external heartbeat_acquire : unit -> unit = "domainslib_heartbeat_acquire"
+external heartbeat_release : unit -> unit = "domainslib_heartbeat_release"
+external heartbeat_stats : unit -> int * int = "domainslib_heartbeat_stats"
+external heartbeat_reset_stats : unit -> unit = "domainslib_heartbeat_reset_stats"
 
-  let get() =
-    try fiber_get_local_queue () with Failure _ ->
-      let q = create () in
-      fiber_set_local_queue q;
-      q
-
-  let disable_interrupts q = q.heartbeat_mask <- false
-
-  let enable_interrupts q = q.heartbeat_mask <- true
-
-  let add x q = Queue.add x q.queue
-
-  let take_opt q = Queue.take_opt q.queue
-
-  let interrupts_enabled ()= (get ()).heartbeat_mask
-end
-let heartbeat_promotions = 15
 let heartbeat_interval_us = 250
+let tokens_per_heartbeat = 15
 
+(* Task status in the queue *)
 type 'a task_status =
   | Promoted of ('a * int) Task.promise
   | Claimed
@@ -42,95 +26,114 @@ type 'a task_status =
 
 type task_ref = TaskRef : 'a task_status ref -> task_ref
 
-let promote pool g =
-  let cur_tokens = fiber_get_tokens () in
-    fiber_set_tokens ((cur_tokens - 1) / 2);
-    let closure = fun _ ->
-      (*does every such thing create a new fiber?*)
-      (fiber_set_tokens (cur_tokens / 2);
-      let result = g () in
-      (*do we need to return children tokens*)
-      let child_tokens = fiber_get_tokens () in
-      (result, child_tokens))
-    in
-    let result = Task.async pool closure in
+(* Fiber-local state *)
+type state = {
+  mutable tokens : int;
+  mutable queue : task_ref Queue.t;
+  mutable heartbeat_mask : bool;
+}
+
+let null_state = { tokens = 0; queue = Queue.create (); heartbeat_mask = false }
+let dynamic_key = create_dynamic null_state
+
+(* Get current fiber's state *)
+let current_state () : state =
+  get_fiber_state dynamic_key
+
+let promote pool (state : state) g =
+  let cur_tokens = state.tokens in
+  state.tokens <- (cur_tokens - 1) / 2;
+  let closure = fun _ ->
+    let child_state = { tokens = cur_tokens / 2;
+                        queue = Queue.create ();
+                        heartbeat_mask = true } in
+    set_fiber_state dynamic_key child_state;
+    let result = g () in
+    let child_tokens = child_state.tokens in
+    (result, child_tokens)
+  in
+  Task.async pool closure
+
+let join : type a. Task.pool -> state -> (a * int) Task.promise -> a =
+  fun pool state promise ->
+    let (result, child_tokens) = Task.await pool promise in
+    state.tokens <- state.tokens + child_tokens;
     result
 
-let join : type a. Task.pool -> (a * int) Task.promise -> a =
-  fun pool promise ->
-    let (result, child_tokens) = Task.await pool promise in
-    let cur_tokens = fiber_get_tokens () in
-    fiber_set_tokens (cur_tokens + child_tokens);
-    result
+let promote_at_interrupt pool state =
+  state.heartbeat_mask <- false;
+  let rec loop () =
+    if state.tokens > 0 then
+      match Queue.take_opt state.queue with
+      | None -> ()
+      | Some (TaskRef task) ->
+          (match !task with
+           | Claimed -> loop ()
+           | Pending g ->
+               task := Promoted (promote pool state g);
+               loop ()
+           | Promoted _ -> loop ())
+    else ()
+  in
+  loop ();
+  state.heartbeat_mask <- true
+
+(* Heartbeat callback *)
+let heartbeat_callback pool (state : state) =
+  if state != null_state then begin
+    state.tokens <- state.tokens + tokens_per_heartbeat;
+    if state.heartbeat_mask then
+      promote_at_interrupt pool state
+  end
 
 let fork2join : type a b. Task.pool -> (unit -> a) -> (unit -> b) -> a * b =
   fun pool f g ->
-    if (fiber_get_tokens () > 0) then (
-      let fls_queue=Heartbeat_Queue.get () in
-      (*Do I need to disable interrupts when promoting a task? -> YES! *)
-      Heartbeat_Queue.disable_interrupts fls_queue;
-      let g_promise = promote pool g in
-      Heartbeat_Queue.enable_interrupts fls_queue;
-      let result_f = f () in 
-      (*no need to disable interrupts while joining*)
-      let result_g =join pool g_promise in
-      (result_f, result_g)
-    )
-    else (
-      let task = ref (Pending g) in
-      let fls_queue=Heartbeat_Queue.get () in
-      Heartbeat_Queue.disable_interrupts fls_queue;
-      Heartbeat_Queue.add (TaskRef task) fls_queue;
-      Heartbeat_Queue.enable_interrupts fls_queue;
-
+    let state = current_state () in
+    if state.tokens > 0 then begin
+      state.heartbeat_mask <- false;
+      let g_promise = promote pool state g in
+      state.heartbeat_mask <- true;
       let result_f = f () in
-
-      Heartbeat_Queue.disable_interrupts fls_queue;
+      let result_g = join pool state g_promise in
+      (result_f, result_g)
+    end else begin
+      let task = ref (Pending g) in
+      state.heartbeat_mask <- false;
+      Queue.add (TaskRef task) state.queue;
+      state.heartbeat_mask <- true;
+      
+      let result_f = f () in
+      
+      state.heartbeat_mask <- false;
       let result_g =
         match !task with
-          | Promoted p -> 
-            let res=join pool p in
-            Heartbeat_Queue.enable_interrupts fls_queue;
+        | Promoted p ->
+            let res = join pool state p in
+            state.heartbeat_mask <- true;
             res
-          | Pending g -> 
+        | Pending g ->
             task := Claimed;
-            Heartbeat_Queue.enable_interrupts fls_queue; 
+            state.heartbeat_mask <- true;
             g ()
-          | Claimed -> Heartbeat_Queue.enable_interrupts fls_queue; failwith "Internal Error: Task already claimed"
+        | Claimed ->
+            state.heartbeat_mask <- true;
+            failwith "Internal Error: Task already claimed"
       in
       (result_f, result_g)
-    )
-
-let promote_at_interrupt pool =
-  let fls_queue=Heartbeat_Queue.get () in
-  Heartbeat_Queue.disable_interrupts fls_queue;
-  let rec loop () =
-    if(fiber_get_tokens () > 0) then 
-      (match Heartbeat_Queue.take_opt fls_queue with
-        | None -> ()
-        | Some (TaskRef task) ->
-          (match !task with
-            | Claimed -> loop ()
-            | Pending g ->
-                  task := Promoted (promote pool g);
-                  loop ()
-            | Promoted _ -> loop ()))
-    else () in 
-  loop ();
-  Heartbeat_Queue.enable_interrupts fls_queue
-
-(*If heartbeats are disabled - I just increment the fiber count and pass*)
-let callback pool =
-  fiber_set_tokens (fiber_get_tokens () + heartbeat_promotions);
-  if Heartbeat_Queue.interrupts_enabled () then
-  promote_at_interrupt pool
+    end
 
 let setup pool =
-  setup_heartbeat heartbeat_interval_us callback pool;
-  acquire_heartbeat ()
+  heartbeat_setup heartbeat_interval_us dynamic_key heartbeat_callback pool;
+  heartbeat_acquire ()
 
 let init_tokens n =
-  fiber_set_tokens n
+  let state = { tokens = n;
+                queue = Queue.create ();
+                heartbeat_mask = true } in
+  set_fiber_state dynamic_key state
 
 let teardown () =
-  release_heartbeat ()
+  heartbeat_release ()
+
+let stats = heartbeat_stats
+let reset_stats = heartbeat_reset_stats

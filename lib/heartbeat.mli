@@ -39,3 +39,11 @@ val teardown : unit -> unit
     @return Tuple [(result_f, result_g)]
     @raise Failure if fiber-local storage is not properly initialized *)
 val fork2join : Task.pool -> (unit -> 'a) -> (unit -> 'b) -> 'a * 'b
+
+(** {1 Debug/Statistics} *)
+
+val stats : unit -> int * int
+(** [stats ()] returns [(heartbeat_count, callbacks_invoked)] for debugging. *)
+
+val reset_stats : unit -> unit
+(** Reset heartbeat statistics. *)

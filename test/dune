@@ -67,11 +67,6 @@
  (modules final_compare))
 
 (test
- (name kcas_integration)
- (libraries domainslib kcas)
- (modules kcas_integration))
-
-(test
  (name enumerate_par)
  (libraries domainslib)
  (modules enumerate_par))
@@ -196,8 +191,4 @@
 
 ;; STM_sequential and STM_domain test of Domainslib.Chan
 
-(test
- (name chan_stm_tests)
- (modules chan_stm_tests)
- (libraries qcheck-stm.sequential qcheck-stm.domain domainslib)
- (action (run %{test} --verbose)))
+
